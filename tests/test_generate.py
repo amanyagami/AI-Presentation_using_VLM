@@ -10,10 +10,12 @@ from PIL import Image
 
 from slidegen.generate import (
     GenerationError,
+    MissingCredentialsError,
     extract_captions,
     generate_deck,
     generate_to_file,
     load_extraction,
+    make_client,
 )
 
 GOOD = {
@@ -139,3 +141,22 @@ def test_generate_to_file_writes_valid_deck(extraction_dir: Path, tmp_path: Path
         extraction_dir, tmp_path / "slides" / "p.json", client=FakeClient([json.dumps(GOOD)])
     )
     assert json.loads(Path(out).read_text())["slides"][0]["id"] == "s1"
+
+
+def test_missing_api_key_fails_clearly(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    with pytest.raises(MissingCredentialsError, match="ANTHROPIC_API_KEY"):
+        make_client()
+
+
+def test_cli_missing_key_exits_1_but_dry_run_does_not_need_it(
+    extraction_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from slidegen.cli import main
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+    assert main(["generate", str(extraction_dir), "--dry-run"]) == 0
+    assert main(["generate", str(extraction_dir), "-o", str(extraction_dir / "o.json")]) == 1
+    assert "ANTHROPIC_API_KEY" in capsys.readouterr().err

@@ -11,7 +11,13 @@ import sys
 from pathlib import Path
 
 from slidegen import extract as ex
-from slidegen.generate import DEFAULT_MAX_IMAGES, DEFAULT_MAX_RETRIES, DEFAULT_MODEL
+from slidegen.generate import (
+    DEFAULT_MAX_IMAGES,
+    DEFAULT_MAX_RETRIES,
+    DEFAULT_MODEL,
+    GenerationError,
+    MissingCredentialsError,
+)
 from slidegen.schema import export_json_schema
 
 
@@ -71,15 +77,19 @@ def main(argv: list[str] | None = None) -> int:
         from slidegen.generate import generate_to_file
 
         out = args.output or Path("slides") / f"{args.extraction_dir.name}.json"
-        result = generate_to_file(
-            args.extraction_dir,
-            out,
-            model=args.model,
-            max_retries=args.max_retries,
-            max_images=args.max_images,
-            image_base=args.image_base,
-            dry_run=args.dry_run,
-        )
+        try:
+            result = generate_to_file(
+                args.extraction_dir,
+                out,
+                model=args.model,
+                max_retries=args.max_retries,
+                max_images=args.max_images,
+                image_base=args.image_base,
+                dry_run=args.dry_run,
+            )
+        except (MissingCredentialsError, GenerationError) as e:
+            print(f"error: {e}", file=sys.stderr)
+            return 1
         if args.dry_run:
             print(json.dumps({"model": args.model, **result}, indent=2))  # type: ignore[arg-type]
         else:

@@ -66,6 +66,10 @@ class GenerationError(RuntimeError):
     """Raised when the model never produced a valid deck."""
 
 
+class MissingCredentialsError(RuntimeError):
+    """Raised when no Anthropic credentials are configured in the environment."""
+
+
 @dataclass
 class Figure:
     """One extracted figure to show the model."""
@@ -227,7 +231,16 @@ def validate_deck(raw: str, allowed_srcs: set[str]) -> Deck:
 
 
 def make_client() -> ClientLike:
-    """Create a real Anthropic client (needs the ``vlm`` extra and credentials)."""
+    """Create a real Anthropic client (needs the ``vlm`` extra and credentials).
+
+    Raises:
+        MissingCredentialsError: If neither ANTHROPIC_API_KEY nor ANTHROPIC_AUTH_TOKEN is set.
+    """
+    if not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):
+        raise MissingCredentialsError(
+            "ANTHROPIC_API_KEY is not set. Export it (export ANTHROPIC_API_KEY=sk-ant-...) "
+            "or use --dry-run to inspect the request without calling the API."
+        )
     try:
         import anthropic
     except ImportError as e:  # pragma: no cover
