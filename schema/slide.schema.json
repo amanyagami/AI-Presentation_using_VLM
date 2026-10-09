@@ -1,0 +1,120 @@
+{
+  "$defs": {
+    "Image": {
+      "additionalProperties": false,
+      "description": "An image attached to a step.",
+      "properties": {
+        "src": {
+          "description": "Image URL or site-relative path (http/https only in the viewer).",
+          "title": "Src",
+          "type": "string"
+        },
+        "alt": {
+          "default": "",
+          "description": "Alternative text describing the image.",
+          "title": "Alt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "src"
+      ],
+      "title": "Image",
+      "type": "object"
+    },
+    "Slide": {
+      "additionalProperties": false,
+      "description": "A single slide made of ordered steps.",
+      "properties": {
+        "id": {
+          "description": "Unique kebab-case slide id.",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "description": "Slide title.",
+          "title": "Title",
+          "type": "string"
+        },
+        "subtitle": {
+          "default": "",
+          "description": "One-line subtitle.",
+          "title": "Subtitle",
+          "type": "string"
+        },
+        "steps": {
+          "description": "Ordered steps; at least one.",
+          "items": {
+            "$ref": "#/$defs/Step"
+          },
+          "title": "Steps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "steps"
+      ],
+      "title": "Slide",
+      "type": "object"
+    },
+    "Step": {
+      "additionalProperties": false,
+      "description": "One progressively revealed step on a slide.",
+      "properties": {
+        "number": {
+          "description": "1-based step number within the slide.",
+          "title": "Number",
+          "type": "integer"
+        },
+        "heading": {
+          "description": "Short step heading.",
+          "title": "Heading",
+          "type": "string"
+        },
+        "body_markdown": {
+          "description": "Step body. Supports **bold**, _italic_, [links](https://...) and paragraphs.",
+          "title": "Body Markdown",
+          "type": "string"
+        },
+        "image": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Image"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Optional figure for this step."
+        }
+      },
+      "required": [
+        "number",
+        "heading",
+        "body_markdown"
+      ],
+      "title": "Step",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A file of slides: ``{\"slides\": [...]}`` (the shape ``slides/*.json`` may take).",
+  "properties": {
+    "slides": {
+      "description": "Ordered slides of the presentation.",
+      "items": {
+        "$ref": "#/$defs/Slide"
+      },
+      "title": "Slides",
+      "type": "array"
+    }
+  },
+  "required": [
+    "slides"
+  ],
+  "title": "Deck",
+  "type": "object"
+}
