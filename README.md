@@ -107,6 +107,10 @@ CI (`.github/workflows/ci.yml`) runs the same checks. `requirements.legacy.freez
 
 ---
 
+## License
+
+[Apache-2.0](LICENSE)
+
 # Original notes
 
 (Pre-`slidegen` documentation; install steps there are superseded by the section above.)
