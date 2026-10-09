@@ -1,88 +1,156 @@
 {
   "slides": [
     {
-      "id": "01-intro",
-      "title": "Intro",
+      "id": "title",
+      "title": "Visual Adversarial Attack on Vision-Language Models for Autonomous Driving",
+      "subtitle": "Paper summary: ADvLM — Tianyuan Zhang et al. (arXiv)",
       "order": 1,
-      "url": "/slides/01.json",
-      "subtitle": "Vision, problem, and opportunity",
       "steps": [
         {
-          "number": 1,
-          "heading": "Mission",
-          "body_markdown": "Our mission is to simplify complex workflows with **intelligent automation** that scales across teams."
-        },
-        {
-          "number": 2,
-          "heading": "Customer Pain",
-          "body_markdown": "Teams spend excessive time on manual coordination, causing delays and high operational costs.\n\nThis creates a clear opener for automation and visibility tools."
-        },
-        {
-          "number": 3,
-          "heading": "Why Now",
-          "body_markdown": "Rapid adoption of cloud platforms and AI-driven tooling makes automation both feasible and expected by customers."
+          "number": "1",
+          "heading": "What this is",
+          "body_markdown": "A concise presentation of ADvLM, a visual adversarial attack framework tailored to Vision-Language Models (VLMs) used in autonomous driving (AD). See source paper for figures and full details. (PDF pages: 1–2).",
+          "image": null
         }
       ]
     },
     {
-      "id": "02-growth",
-      "title": "Growth Strategy",
+      "id": "motivation",
+      "title": "Motivation & Risk",
+      "subtitle": "Why attack VLMs in AD matters",
       "order": 2,
-      "url": "/slides/02.json",
-      "subtitle": "How we acquire and retain customers",
       "steps": [
         {
-          "number": 1,
-          "heading": "Target Segments",
-          "body_markdown": "Mid-market technology, finance, and logistics teams that manage high-volume operational workflows."
+          "number": "1",
+          "heading": "VLMs in AD",
+          "body_markdown": "VLMs combine visual inputs and natural language reasoning for perception and planning in AD — useful but safety-critical. (Intro; page 1).",
+          "image": null
         },
         {
-          "number": 2,
-          "heading": "Acquisition Channels",
-          "body_markdown": "**Inbound content & SEO**, targeted paid campaigns, and channel partnerships.\n\nPilot programs with strategic customers to build case studies."
-        },
-        {
-          "number": 3,
-          "heading": "Monetization",
-          "body_markdown": "Subscription tiers with usage-based metering and an enterprise plan for integrations and SSO."
-        },
-        {
-          "number": 4,
-          "heading": "Retention",
-          "body_markdown": "Strong onboarding, in-product analytics, and a customer success program to drive expansion."
+          "number": "2",
+          "heading": "Security concern",
+          "body_markdown": "Adversarial visual perturbations can change VLM outputs (wrong actions), producing dangerous vehicle behavior (illustrated in Fig.1, page 1).",
+          "image": null
         }
       ]
     },
     {
-      "id": "03-tech",
-      "title": "Technical Priorities",
+      "id": "challenges",
+      "title": "Two unique AD attack challenges",
+      "subtitle": "What makes AD different from generic VLM attacks",
       "order": 3,
-      "url": "/slides/03.json",
-      "subtitle": "Roadmap to reliable, scalable infrastructure",
       "steps": [
         {
-          "number": 1,
-          "heading": "Stability & Scale",
-          "body_markdown": "Migrate core services to resilient, horizontally-scalable microservices and add observability."
+          "number": "1",
+          "heading": "Textual variability",
+          "body_markdown": "The same instruction can be phrased many ways (e.g., “turn left” vs “turn left ahead”). Attacks must work across semantically equivalent prompts. (Sec.3; page 2).",
+          "image": null
         },
         {
-          "number": 2,
-          "heading": "Performance",
-          "body_markdown": "Optimize API latency, introduce edge caching, and implement async processing for heavy jobs."
+          "number": "2",
+          "heading": "Time-series visual scenarios",
+          "body_markdown": "Driving inputs are frame sequences with changing viewpoints; perturbations must generalize across selected pivotal frames. (Sec.3; Fig.2, page 3).",
+          "image": null
+        }
+      ]
+    },
+    {
+      "id": "advlm-overview",
+      "title": "ADvLM: high-level overview",
+      "subtitle": "Two main components",
+      "order": 4,
+      "steps": [
+        {
+          "number": "1",
+          "heading": "Semantic-Invariant Induction (text)",
+          "body_markdown": "Generate a low-semantic-entropy (LSE) prompt library: use an LLM (e.g., GPT-4V) to create diverse yet semantically consistent prompt variants to cover textual variability. (Sec.4.1; page 4).",
+          "image": null
         },
         {
-          "number": 3,
-          "heading": "Security & Compliance",
-          "body_markdown": "Harden encryption-at-rest/in-transit, complete SOC 2 readiness, and add role-based access controls."
+          "number": "2",
+          "heading": "Scenario-Associated Enhancement (vision)",
+          "body_markdown": "Select pivotal frames via attention analysis and optimize perturbations to generalize across viewpoints and frames. Combined loss balances image-wise and scene-wise objectives. (Sec.4.2; Eqns.6–10; page 4–5).",
+          "image": null
+        }
+      ]
+    },
+    {
+      "id": "semantic-induction",
+      "title": "Semantic-Invariant Induction (details)",
+      "subtitle": "How the text-side is built",
+      "order": 5,
+      "steps": [
+        {
+          "number": "1",
+          "heading": "Generate and score variants",
+          "body_markdown": "Use an LLM to propose prompt variants. Compute a penalty B(t, t_i)=SE(t_i)+β·D(t,t_i) combining semantic entropy and expression distance; select low-entropy, diverse prompts to build LSE library. (Sec.4.1; Eqns.3–5).",
+          "image": null
         },
         {
-          "number": 4,
-          "heading": "Product Innovation",
-          "body_markdown": "Ship AI-assisted automation builders and expand the public API for integrators.",
-          "image": {
-            "src": "https://example.com/roadmap-screenshot.jpg",
-            "alt": "Technical roadmap mockup"
-          }
+          "number": "2",
+          "heading": "Why it helps",
+          "body_markdown": "Optimizing perturbations over multiple semantically equivalent prompts makes attacks robust to wording changes in AD instructions.",
+          "image": null
+        }
+      ]
+    },
+    {
+      "id": "scenario-enhancement",
+      "title": "Scenario-Associated Enhancement (details)",
+      "subtitle": "How the visual-side is built",
+      "order": 6,
+      "steps": [
+        {
+          "number": "1",
+          "heading": "Pivotal frame selection",
+          "body_markdown": "Iteratively choose frames that maximize attention-map diversity (minimize similarity to already-selected frames), producing a representative set Ve for optimization. (Sec.4.2; Eqns.7–8; page 5).",
+          "image": null
+        },
+        {
+          "number": "2",
+          "heading": "Loss functions",
+          "body_markdown": "Limage enforces effectiveness over perspective transforms; Lscene enforces sequence generalization. Final attack loss: Lattack = (1−λ)·Limage + λ·Lscene. (Eqn.10; page 5).",
+          "image": null
+        }
+      ]
+    },
+    {
+      "id": "experiments",
+      "title": "Experiments & Key Results",
+      "subtitle": "Benchmarks, metrics, and outcomes",
+      "order": 7,
+      "steps": [
+        {
+          "number": "1",
+          "heading": "Setup",
+          "body_markdown": "Evaluated on AD VLMs (DriveLM, Dolphins, LMDrive) and general VLMs; open-loop and closed-loop (CARLA) tests; white-box and black-box settings. (Sec.5; pages 5–7).",
+          "image": null
+        },
+        {
+          "number": "2",
+          "heading": "Main findings",
+          "body_markdown": "ADvLM yields the strongest attack effectiveness: e.g., Final Score drops (DriveLM) up to ~16.97% in white-box; closed-loop shows increased collisions (Table 1–2, pages 6–7). Prefetch ablations show 3 prompts and |Ve|≈6 are effective. (Tables & figures pages 6–8).",
+          "image": null
+        }
+      ]
+    },
+    {
+      "id": "realworld-conclusion",
+      "title": "Real-world study, limits & takeaways",
+      "subtitle": "Practical relevance and open questions",
+      "order": 8,
+      "steps": [
+        {
+          "number": "1",
+          "heading": "Real-world vehicle test",
+          "body_markdown": "Physical vehicle trials show ADvLM can cause route deviations in many trials (70% deviation in reported experiment). (Sec.6; page 8).",
+          "image": null
+        },
+        {
+          "number": "2",
+          "heading": "Limitations & future work",
+          "body_markdown": "Authors note future directions: universal attacks, targeted attacks, broader multimodal settings. Emphasize need for defenses in safety-critical systems. (Sec.7; page 9).",
+          "image": null
         }
       ]
     }

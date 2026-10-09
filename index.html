@@ -133,10 +133,34 @@ function createStepNode(step){
   return li;
 }
 
-function fillSlide(slide){
+async function loadSlideData(data){
+  // Inline slides carry `steps`; url-based slides are fetched on demand.
+  if(Array.isArray(data.steps)) return data;
+  if(!data.url) throw new Error('slide has neither steps nor url');
+  const res = await fetch(data.url, {cache:'no-cache'});
+  if(!res.ok) throw new Error('HTTP ' + res.status + ' for ' + data.url);
+  const json = await res.json();
+  // A url may point at a single Slide or at a Deck ({slides:[...]}).
+  if(Array.isArray(json.slides)){
+    return json.slides.find(s => s.id === data.id) || json.slides[0] || {};
+  }
+  return json;
+}
+
+async function fillSlide(slide){
   if(slide.dataset.filled === '1') return;
   const data = slideDataMap.get(slide);
   if(!data) return;
+
+  let full;
+  try{
+    full = await loadSlideData(data);
+  }catch(e){
+    const ph = slide.querySelector('.placeholder');
+    if(ph) ph.textContent = 'Failed to load slide: ' + e.message;
+    return;
+  }
+  if(slide.dataset.filled === '1') return;
 
   const ph = slide.querySelector('.placeholder');
   if(ph) ph.remove();
@@ -144,7 +168,7 @@ function fillSlide(slide){
   const steps = document.createElement('ul');
   steps.className = 'steps';
 
-  (data.steps || []).forEach(s => {
+  (full.steps || []).forEach(s => {
     steps.appendChild(createStepNode(s));
   });
 
@@ -152,7 +176,7 @@ function fillSlide(slide){
 
   const hint = document.createElement('div');
   hint.className = 'hint';
-  hint.textContent = 'Click or use Space/Enter/→ to reveal';
+  hint.textContent = 'Click or use Space/Enter/\u2192 to reveal';
   slide.appendChild(hint);
 
   slide.dataset.filled = '1';
@@ -171,20 +195,22 @@ let slideIndex = 0;
 let stepIndex = -1;
 let currentSteps = [];
 
-function activateSlide(i){
+async function activateSlide(i){
   slides.forEach(s => s.classList.remove('active'));
   const s = slides[i];
   s.classList.add('active');
+  slideIndex = i;
+  document.getElementById('pos').textContent = `${slideIndex+1} / ${slides.length}`;
 
-  fillSlide(s);
+  currentSteps = [];
+  stepIndex = -1;
+  await fillSlide(s);
+  if(slideIndex !== i) return; // user navigated away while loading
   activateImagesForSlide(s);
 
   currentSteps = Array.from(s.querySelectorAll('.step'));
   currentSteps.forEach(st => st.classList.remove('visible'));
   stepIndex = -1;
-
-  slideIndex = i;
-  document.getElementById('pos').textContent = `${slideIndex+1} / ${slides.length}`;
 }
 
 function showNext(){
@@ -219,7 +245,7 @@ document.addEventListener('click', (e)=>{
 async function init(){
   const deckEl = document.getElementById('deck');
   const params = new URLSearchParams(location.search);
-  const manifestUrl = params.get('manifest') || '/index.json';
+  const manifestUrl = params.get('manifest') || 'index.json';
 
   let manifest;
   try{
