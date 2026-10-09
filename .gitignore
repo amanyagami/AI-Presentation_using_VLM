@@ -1,2 +1,8 @@
 ./test 
 .conda
+.venv/
+__pycache__/
+*.egg-info/
+node_modules/
+.pytest_cache/
+.ruff_cache/
