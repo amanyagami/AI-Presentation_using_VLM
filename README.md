@@ -1,66 +1,109 @@
-# slidegen: research PDF to slide deck with a VLM
+<div align="center">
 
-Turn a research paper PDF into a browsable, step-by-step slide deck.
+# slidegen
 
+**Turn a research-paper PDF into a step-by-step slide deck with a vision-language model.**
+
+[![CI](https://github.com/amanyagami/AI-Presentation_using_VLM/actions/workflows/ci.yml/badge.svg)](https://github.com/amanyagami/AI-Presentation_using_VLM/actions/workflows/ci.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB.svg)](pyproject.toml)
+[![uv](https://img.shields.io/badge/packaging-uv-DE5FE9.svg)](https://docs.astral.sh/uv/)
+
+```mermaid
+flowchart LR
+    A[PDF] -->|slidegen extract| B[extracted_data/paper<br/>text, tables, figures]
+    B -->|slidegen generate<br/>Claude vision| C[slides/paper.json]
+    C -->|node build-index.js| D[index.json]
+    D --> E[index.html viewer]
 ```
- raw_pdfs/paper.pdf
-        |  slidegen extract        PyMuPDF + pdfplumber (+ optional PaddleOCR)
-        v
- extracted_data/paper/{output.json, images/}
-        |  slidegen generate       Claude vision model, schema-constrained JSON
-        v
- slides/paper.json                 single source of truth for the deck
-        |  slidegen build-index    node build-index.js
-        v
- index.json  ->  index.html        static, dependency-free viewer
-```
 
-## Install
+<img src="docs/viewer.png" alt="The slide viewer showing the 'ADvLM: high-level overview' slide with two revealed steps" width="720">
 
-Requires Python >= 3.10 and [uv](https://docs.astral.sh/uv/). Node >= 18 is needed for the index build and its tests.
+<sub>The bundled viewer rendering this repo's own <code>slides/slide1.json</code> (Chromium screenshot).</sub>
+
+</div>
+
+## Quick start
+
+Requires Python 3.10+, [uv](https://docs.astral.sh/uv/) and Node 18+ (index build and viewer tests).
 
 ```bash
-uv sync                    # core: pymupdf, pdfplumber, pillow, pydantic (+ dev tools)
-uv sync --extra vlm        # + anthropic, for `generate`
-uv sync --extra ocr        # + paddleocr/paddlepaddle, for OCR whitefill (large download)
+uv sync --extra vlm                       # core + anthropic client
+uv run slidegen extract raw_pdfs/2505.14984v1.pdf --no-ocr
+uv run slidegen generate extracted_data/2505.14984v1 --dry-run   # inspect payload, no API call
+export ANTHROPIC_API_KEY=sk-ant-...
+uv run slidegen generate extracted_data/2505.14984v1             # writes slides/2505.14984v1.json
+uv run slidegen build-index                                      # writes index.json
+python -m http.server                                            # open http://localhost:8000/
 ```
 
-Without the `ocr` extra, extraction still works: figures are cropped but text is not whited out of them. `--no-ocr` forces this.
+| Install | Adds | When you need it |
+|---|---|---|
+| `uv sync` | pymupdf, pdfplumber, pillow, pydantic, dev tools | extraction, schema, tests |
+| `--extra vlm` | anthropic | `slidegen generate` |
+| `--extra ocr` | paddleocr, paddlepaddle (large) | removing text from cropped figures |
 
-## Use
+## Pipeline
 
-```bash
-uv run slidegen extract raw_pdfs/2505.14984v1.pdf [--no-ocr] [--output-dir extracted_data]
-export ANTHROPIC_API_KEY=...
-uv run slidegen generate extracted_data/2505.14984v1 [--model claude-sonnet-5-5] [--dry-run]
-uv run slidegen build-index          # writes index.json from slides/*.json
-python -m http.server                # open http://localhost:8000/
-```
+| Stage | Command | Reads | Writes |
+|---|---|---|---|
+| Extract | `slidegen extract <pdf or dir>` | PDF | `extracted_data/<paper>/output.json`, `images/*.png` |
+| Generate | `slidegen generate <extraction dir>` | the above | `slides/<paper>.json` |
+| Index | `slidegen build-index` (runs `node build-index.js`) | `slides/*.json` | `index.json` |
+| View | `index.html` | `index.json` | none |
 
-- `generate` defaults to `claude-sonnet-5-5` (override with `--model` or `SLIDEGEN_MODEL`). It sends the page text, tables and downscaled base64 figures, asks for JSON constrained to `schema/slide.schema.json` (structured outputs), validates it with pydantic and, on failure, sends the error back to the model (max 2 retries). `--dry-run` prints payload sizes and makes no API call.
-- Slide files in `slides/` are either one Slide or a deck `{"slides": [...]}`. See `schema/slide.schema.json` (regenerate with `uv run slidegen export-schema`).
-- `node build-index.js` inlines all slides into `index.json`; `--lazy` emits `url`-only entries for single-slide files and the viewer fetches them on demand. The viewer supports both.
-- The legacy `python extract_images.py <pdf|dir> [proximity] [min_area] [caption_scan]` still works as a thin wrapper.
+- **Extract** combines PyMuPDF (figure regions), pdfplumber (text and tables) and, optionally, PaddleOCR. `python extract_images.py` still works as a wrapper.
+- **Generate** sends page text, tables and base64 figures (downscaled to 1568 px) to the Messages API and constrains the reply to the JSON Schema with structured outputs. Output is validated with pydantic; on failure the error goes back to the model, up to 2 retries. Default model `claude-sonnet-5-5` (`--model` or `SLIDEGEN_MODEL`). It exits with a clear error if `ANTHROPIC_API_KEY` is unset; `--dry-run` needs no key.
+- **Index** treats `slides/*.json` as the single source of truth. Files are a single Slide or a deck `{"slides": [...]}`. By default slides are inlined; `--lazy` emits `url` entries that the viewer fetches on demand (single-slide files only).
 
-## Deploy the viewer (Netlify / Vercel)
+## Schema
 
-The viewer is static. Both `netlify.toml` and `vercel.json` set the build command to `node build-index.js` and publish the repository root. The files the site actually needs are:
+Exported to [`schema/slide.schema.json`](schema/slide.schema.json) (`uv run slidegen export-schema`).
 
-- `index.html`, `index.json` (generated), `slides/*.json`
-- `extracted_data/<paper>/images/*.png` (referenced by `image.src`)
+| Object | Fields |
+|---|---|
+| Deck | `slides[]` (unique ids) |
+| Slide | `id`, `title`, `subtitle`, `steps[]` (at least one) |
+| Step | `number`, `heading`, `body_markdown`, `image?` |
+| Image | `src`, `alt` |
 
-To publish only those, build with `node build-index.js --dist dist` and set the publish directory to `dist`.
+`body_markdown` supports `**bold**`, `_italic_`, `[links](https://...)` and paragraphs. The viewer only loads `http`/`https` image URLs (relative paths resolve against the page).
 
-## Develop
+## Deploy (Netlify / Vercel)
+
+The viewer is static. `netlify.toml` and `vercel.json` both run `node build-index.js` and publish the repository root.
+
+| File | Needed on the site |
+|---|---|
+| `index.html`, `index.json` | yes (`index.json` is generated) |
+| `slides/*.json` | yes |
+| `extracted_data/<paper>/images/*.png` | yes, if slides reference figures |
+| `raw_pdfs/`, `src/`, tests | no |
+
+To publish only the needed files, use build command `node build-index.js --dist dist` and publish directory `dist`.
+
+## Development
 
 ```bash
 uv run --frozen ruff format src/ tests/
 uv run --frozen ruff check src/ tests/
-uv run --frozen pytest
-node --test
+uv run --frozen pytest        # offline; uses a fake Anthropic client
+node --test                   # build-index tests
+pre-commit install            # ruff-check --fix, ruff-format, uv-lock
 ```
 
-`requirements.legacy.freeze.txt` is the old, non-installable `pip freeze` kept for reference only.
+CI (`.github/workflows/ci.yml`) runs the same checks. `requirements.legacy.freeze.txt` is the old non-installable `pip freeze`, kept for reference.
+
+**Extraction speed** (OCR off, one container, `raw_pdfs/2505.18961v2.pdf`, 27 pages): 6.2 to 6.3 s, about 4.3 pages/s (a cold first run took 8.2 s). Profiling shows roughly 85-90% of the time is pdfplumber's table/line parsing; the PyMuPDF figure stage is about 2 s of a profiled 16.6 s. With PaddleOCR enabled it will be slower; that was not measured.
+
+## Limitations
+
+- Figure and caption detection are geometry heuristics; expect misses on unusual layouts.
+- Without the `ocr` extra, text inside cropped figures is not whited out.
+- `generate` has been exercised only against a fake client in tests, not the live API.
+- Credential check looks only at `ANTHROPIC_API_KEY` / `ANTHROPIC_AUTH_TOKEN`.
+- At most 20 figures per request by default (`--max-images`); the model sees page text but not rendered pages.
+- Lazy mode cannot split deck files; their slides are always inlined.
 
 ---
 
