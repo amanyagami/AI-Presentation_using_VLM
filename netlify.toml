@@ -1,0 +1,4 @@
+# Static deploy of the slide viewer. index.json is generated from slides/*.json.
+[build]
+  command = "node build-index.js"
+  publish = "."
